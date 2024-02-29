@@ -1,0 +1,92 @@
+@page "/products/"
+@*  @page "/products/{id:int}" *@
+
+@inject WebshopService ws
+
+@rendermode InteractiveServer
+
+@if (products is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    @foreach (var p in products)
+    {
+        @p.Name
+    }
+}
+
+@*<Header @ref="headerRef"/> *@
+
+@* All products *@
+@* 
+@if (Id is null)
+{
+    <div class="row row-cols-1 row-cols-lg-2">
+        @foreach (var product in ws.)
+        {
+            <ProductCard Product="product" OnBuy="async () => await AddToCart(product)"/>
+        }
+    </div>
+}
+*@
+@* Single product *@
+@*
+else
+{
+    var product = wp.products.Find(p => p.Id == Id);
+    if (product is null)
+    {
+        <p>No product with this Id found</p>
+    }
+    else
+    {
+        <ProductDetail Product="product" OnBuy="async () => await wp.AddToCart(product)"/>
+    }
+}
+*@
+
+@* 
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private Header headerRef;
+
+    private async Task AddToCart(Product product)
+    {
+        await wp.AddToCart(product);
+        await localStorage.SetItemAsync("ShoppingCart", wp.shoppingCart);
+        headerRef.UpdateHeader();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var cartData = await localStorage.GetItemAsync<Cart>("ShoppingCart");
+            if (cartData is not null)
+                {
+                    wp.shoppingCart.CartItems = cartData.CartItems;
+                }
+            headerRef.UpdateHeader();
+        }
+    }
+}
+*@
+
+@code
+{
+    private List<Product> products;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var result = await ws.GetAllProducts();
+            products = result;
+            StateHasChanged();
+            
+        }
+    }
+}
