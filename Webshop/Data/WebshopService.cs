@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Webshop.Models;
-namespace Webshop.Data;
 
+namespace Webshop.Data;
 
 public class WebshopService
 {
@@ -18,10 +18,13 @@ public class WebshopService
     //     _context.SaveChanges();
     // }
     //
-    // public async Task<ApplicationUser> GetUserItemsInfo(ApplicationUser user)
-    // {
-    //     return _context.Users.Include(u => u.Items).First(u => u.Id == user.Id);
-    // }
+    public async Task<ApplicationUser> GetUserCart(ApplicationUser user)
+    {
+        return _context.Users
+            .Include(u => u.CartItems)
+            .First(u => u.Id == user.Id);
+    }
+
 
     public async Task<List<Product>> GetAllProducts()
     {
@@ -29,5 +32,44 @@ public class WebshopService
         var productsTask = _context.Products.ToListAsync();
         var products = await productsTask;
         return products;
+    }
+
+    public async Task UpdateUser(ApplicationUser user)
+    {
+        _context.Update(user);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<ICollection<CartItem>> ProcessOrder(ICollection<CartItem> items)
+    {
+        bool allProcessed = true;
+        
+        var products = await GetAllProducts();
+        foreach (var item in items)
+        {
+            var matching = products.FirstOrDefault(p => p.Id == item.ProductId);
+            if (matching is null)
+            {
+                items.Remove(item);
+            }
+            else if (item.Quantity > matching.QuantityAvailable)
+            {
+                item.Quantity = matching.QuantityAvailable;
+                allProcessed = false;
+            }
+            else
+            {
+                _context.Update(matching);
+                matching.QuantityAvailable = matching.QuantityAvailable - item.Quantity;
+            }
+        }
+
+        if (allProcessed is true)
+        {
+            await _context.SaveChangesAsync();
+        }
+        
+        return items;
+        
     }
 }

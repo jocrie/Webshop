@@ -1,0 +1,105 @@
+@page "/cart"
+@using Microsoft.AspNetCore.Identity
+@inject AuthenticationStateProvider StateProvider
+@inject WebshopService ws
+@inject UserManager<ApplicationUser> UserManager
+
+@rendermode InteractiveServer
+
+@if (user is not null)
+{
+    if (user.CartItems.Count == 0)
+    {
+        <p>Your shopping cart is empty!</p>
+    }
+    else
+    {
+        <div class="d-flex flex-column mx-auto justify-content-center mb-5" style="max-width: 600px">
+            
+            @foreach (var item in user.CartItems.ToList())
+            {
+                <p>@item.Quantity x @item.ProductId</p>
+            }
+            
+            <div class="alert alert-danger" role="alert">
+              A simple danger alert—check it out!
+            </div>
+            
+            <EditForm Model="deliveryInfo" OnSubmit="HandleSubmit" FormName="CustomerInfo">
+                <div class="row mb-3">
+                    <div class="col">
+                        <InputText @bind-Value="user.Email" class="form-control" disabled="true"></InputText>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col">
+                        <InputText @bind-Value="deliveryInfo.FirstName" class="form-control" placeholder="First name"/>
+                    </div>
+                    <div class="col">
+                        <InputText @bind-Value="deliveryInfo.LastName" class="form-control" placeholder="Last name"/>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col">
+                        <InputText @bind-Value="deliveryInfo.StreetName" class="form-control" placeholder="Street name"/>
+                    </div>
+                    <div class="col">
+                        <InputText @bind-Value="deliveryInfo.StreetNumber" class="form-control" placeholder="Street number"/>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col">
+                        <InputText @bind-Value="deliveryInfo.PostalCode" class="form-control" placeholder="Postal code"/>
+                    </div>
+                    <div class="col">
+                        <InputText @bind-Value="deliveryInfo.City" class="form-control" placeholder="City"/>
+                    </div>
+                </div>
+                <button class="btn btn-primary" type="submit">Submit order!</button>
+            </EditForm>
+        </div>
+    }
+}
+else
+{
+    <p>Log in to start shopping!</p>
+}
+
+@code
+{
+    ApplicationUser? user;
+    AuthenticationState? authenticationState;
+
+    DeliveryInfo deliveryInfo = new DeliveryInfo();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            authenticationState = await StateProvider.GetAuthenticationStateAsync();
+            if (authenticationState.User.Identity.IsAuthenticated is true)
+            {
+                var stateUser = await UserManager.GetUserAsync(authenticationState.User);
+                user = await ws.GetUserCart(stateUser);
+            }
+
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleSubmit()
+    {
+        Console.WriteLine("HandleSubmit pressed");
+        
+        // Processed only if all items are available in full quantity
+        var updatedCart = await ws.ProcessOrder(user.CartItems);
+        
+        // Handle case when not all items available in full quantity
+        
+        // Empty cart
+        // user.CartItems.Clear();
+        await ws.UpdateUser(user);
+    }
+
+
+}

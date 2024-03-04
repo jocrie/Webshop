@@ -1,0 +1,37 @@
+@using Webshop.Models
+
+@inject WebshopService ws
+
+@rendermode InteractiveServer
+
+<style>
+     .header-row {
+         justify-content: flex-end;
+         background-color: white;
+         /*border-bottom: black solid;*/
+         height: 3.5rem;
+         display: flex;
+         position: sticky;
+         z-index: 1;
+         top: 0px;
+         align-items: center;
+         /*margin-bottom: 3rem;*/
+     }
+</style>
+
+<div class="header-row px-4">
+    <NavLink href="cart" class="">
+        <img src="icons/shopping-cart.svg" type="button" alt="Shopping cart" class="position-relative"/>
+        <span class="position-absolute top-20 start-80 translate-middle badge rounded-pill bg-warning">@noCartItems</span>
+    </NavLink>
+</div>
+ 
+ @code 
+ {
+     [Parameter] public int noCartItems { get; set; }
+     
+     public void UpdateHeader()
+     {
+         StateHasChanged();
+     }
+ }

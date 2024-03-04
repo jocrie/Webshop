@@ -1,0 +1,33 @@
+﻿@using Webshop.Models
+
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<div class="d-flex flex-column mx-auto justify-content-center mb-5" style="max-width: 600px">
+    <img src=@Product.ImagePath class="img-fluid" style="max-width: 600px; height: auto; object-fit: contain" alt="...">
+    <div class="">
+        <div class="mt-4">
+            <h5 class="">@Product.Name</h5>
+            <p class="">@Product.Description</p>
+            <p>In stock: @Product.QuantityAvailable</p>
+        </div>
+        <div class="input-group mt-4">
+            <div class="input-group-text px-5">@Math.Round(@Product.Price*@ConversionRates.FirstOrDefault(r=>r.Key == $"{Product.Currency}_{SelectedCurrency}").Value) @SelectedCurrency </div>
+            <AuthorizeView>
+            <button class="btn btn-success px-5" @onclick="() => OnBuy.InvokeAsync()">Buy</button>
+            </AuthorizeView>
+        </div>
+    </div>
+</div>
+
+
+@code
+{
+    [Parameter] public Product Product { get; set; }
+    [Parameter] public Dictionary<string, double> ConversionRates { get; set; }
+    [Parameter] public string SelectedCurrency { get; set; }
+
+    [Parameter] public EventCallback OnBuy { get; set; }
+
+}
