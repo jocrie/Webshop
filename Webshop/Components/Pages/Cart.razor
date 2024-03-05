@@ -3,6 +3,8 @@
 @inject AuthenticationStateProvider StateProvider
 @inject WebshopService ws
 @inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
 @rendermode InteractiveServer
 
@@ -96,9 +98,30 @@ else
         
         // Handle case when not all items available in full quantity
         
-        // Empty cart
-        // user.CartItems.Clear();
-        await ws.UpdateUser(user);
+        
+        // Render confirmation page
+        await GoToConfirmation();
+        
+        // Empty and update cart
+        //user.CartItems.Clear();
+        //await ws.UpdateUser(user);
+    }
+
+    public async Task GoToConfirmation()
+    {
+        var products = await ws.GetAllProducts();
+        // Gör om Items till ClientItems, annars blir det cirkelreferenser och vi kan inte lägga till det i sessionStorage
+        List<ClientItem> clientItems = user.CartItems.Select(i => new ClientItem { ProductName = products.Find(p=>p.Id == i.ProductId).Name, Quantity = i.Quantity }).ToList();
+        // Här lägger vi våra ClientItems i sessionStorage så vi kan hämta ut dem därifrån inne i Client
+        await sessionStorage.SetItemAsync(user.Id, clientItems);
+        await sessionStorage.SetItemAsync("DeliveryInfo", deliveryInfo);
+        NavigationManager.NavigateTo("/orderconfirmation");
+    }
+
+    class ClientItem
+    {
+        public string ProductName { get; set; }
+        public int Quantity { get; set; }
     }
 
 

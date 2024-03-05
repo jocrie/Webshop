@@ -1,0 +1,77 @@
+﻿@page "/orderconfirmation"
+@using Webshop.Client.Models
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+
+@inject AuthenticationStateProvider StateProvider
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
+
+@* Tvingar att man är inloggad för att komma åt den här sidan *@
+@attribute [Authorize]
+@rendermode InteractiveWebAssembly
+
+<h3>Order confirmation</h3>
+
+@if (confirmationItems is not null && deliveryInfo is not null)
+{
+    <div class="mt-4">
+        <h4 class="text-decoration-underline">Invoice details:</h4>
+        <p>@deliveryInfo.FirstName @deliveryInfo.FirstName</p>
+        <p>@deliveryInfo.StreetName @deliveryInfo.StreetNumber</p>
+        <p>@deliveryInfo.PostalCode @deliveryInfo.City</p>
+    </div>
+
+    <div class="mt-4">
+        <h4 class="text-decoration-underline">Ordered items:</h4>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">Product name</th>
+                <th scope="col">Ordered amount</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in confirmationItems)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td>@item.Quantity</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+
+    public AuthenticationState authenticationState;
+
+    List<ClientItem> confirmationItems = new();
+    DeliveryInfo deliveryInfo = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Hämta ut vårt authenticationState
+            authenticationState = await StateProvider.GetAuthenticationStateAsync();
+
+            // Använd det för att hitta den inloggades userId via Claims
+            var userId = authenticationState
+                .User
+                .Claims
+                .Where(c => c.Type == ClaimTypes.NameIdentifier)
+                .First()
+                .Value;
+
+            // Hämta ut informationen från sessionStorage
+            confirmationItems = await sessionStorage.GetItemAsync<List<ClientItem>>(userId);
+            deliveryInfo = await sessionStorage.GetItemAsync<DeliveryInfo>("DeliveryInfo");
+            // Meddela komponenten att statet har uppdaterats
+            StateHasChanged();
+        }
+    }
+
+}
+
