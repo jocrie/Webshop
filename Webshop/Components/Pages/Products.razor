@@ -14,14 +14,16 @@
 
 @rendermode InteractiveServer
 
-<Header @ref="headerRef" noCartItems="user.CartItems.Sum(i => i.Quantity)" />
+<Header @ref="headerRef" noCartItems="user.CartItems.Sum(i => i.Quantity)"/>
 
-<select @onchange="UpdateCurrency">
-    @foreach (Currencies currency in Enum.GetValues(typeof(Currencies)))
-    {
-        <option value="@currency">@currency.ToString()</option>
-    }
-</select>
+<div style="display: flex; justify-content: flex-end">
+    <select class="px-1 py-1 text-center" @onchange="UpdateCurrency">
+        @foreach (Currencies currency in Enum.GetValues(typeof(Currencies)))
+        {
+            <option value="@currency">@currency.ToString()</option>
+        }
+    </select>
+</div>
 
 @if (products is null)
 {
@@ -59,7 +61,7 @@ else
 @code
 {
     private List<Product> products;
-    
+
     public string selectedCurrency;
     public Dictionary<string, double> conversions = new Dictionary<string, double>();
 
@@ -114,7 +116,7 @@ else
     {
         conversions = new Dictionary<string, double>();
         if (args?.Value == null)
-            selectedCurrency = Enum.GetName(typeof(Currencies),0);
+            selectedCurrency = Enum.GetName(typeof(Currencies), 0);
         else
             selectedCurrency = args.Value.ToString();
 

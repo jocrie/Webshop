@@ -17,17 +17,40 @@
     else
     {
         <div class="d-flex flex-column mx-auto justify-content-center mb-5" style="max-width: 600px">
-            
-            @foreach (var item in user.CartItems.ToList())
-            {
-                <p>@item.Quantity x @item.ProductId</p>
-            }
-            
-            <div class="alert alert-danger" role="alert">
-              A simple danger alert—check it out!
+
+            <div class="mt-4">
+                <h4 class="text-decoration-underline">Shopping cart:</h4>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Product name</th>
+                        <th scope="col">Quantity</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in user.CartItems.ToList())
+                    {
+                        <tr>
+                            <td>@(products.Find(p => p.Id == item.ProductId).Name)</td>
+                            <td>@item.Quantity</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
             </div>
             
-            <EditForm Model="deliveryInfo" OnSubmit="HandleSubmit" FormName="CustomerInfo">
+            <button class="btn btn-danger mb-5" @onclick="EmptyCart">Empty cart</button>
+
+            @if (allProcessed == false)
+            {
+                <div class="alert alert-danger" role="alert">
+                    Order could not be processed. Some items were not available (in full quantity). Quantity was updated.
+                </div>
+            }
+
+            <EditForm Model="deliveryInfo" OnValidSubmit="HandleSubmit" FormName="CustomerInfo">
+                <DataAnnotationsValidator />
+                    <ValidationSummary />
                 <div class="row mb-3">
                     <div class="col">
                         <InputText @bind-Value="user.Email" class="form-control" disabled="true"></InputText>
@@ -61,6 +84,8 @@
             </EditForm>
         </div>
     }
+    
+    
 }
 else
 {
@@ -74,6 +99,10 @@ else
 
     DeliveryInfo deliveryInfo = new DeliveryInfo();
 
+    List<Product> products = new List<Product>();
+
+    bool allProcessed = true;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -85,33 +114,41 @@ else
                 user = await ws.GetUserCart(stateUser);
             }
 
+            products = await ws.GetAllProducts();
+
             StateHasChanged();
         }
     }
-    
+
     private async Task HandleSubmit()
     {
         Console.WriteLine("HandleSubmit pressed");
-        
+
         // Processed only if all items are available in full quantity
-        var updatedCart = await ws.ProcessOrder(user.CartItems);
-        
+        allProcessed = await ws.ProcessOrder(user.CartItems);
+
         // Handle case when not all items available in full quantity
-        
-        
-        // Render confirmation page
-        await GoToConfirmation();
-        
-        // Empty and update cart
-        //user.CartItems.Clear();
-        //await ws.UpdateUser(user);
+        if (allProcessed == true)
+        {
+            // Render confirmation page
+            await GoToConfirmation();
+
+            // Empty and update cart
+            user.CartItems.Clear();
+            await ws.UpdateUser(user);
+        }
     }
 
-    public async Task GoToConfirmation()
+    private async Task EmptyCart()
     {
-        var products = await ws.GetAllProducts();
+        user.CartItems.Clear();
+        await ws.UpdateUser(user);
+    }
+
+    private async Task GoToConfirmation()
+    {
         // Gör om Items till ClientItems, annars blir det cirkelreferenser och vi kan inte lägga till det i sessionStorage
-        List<ClientItem> clientItems = user.CartItems.Select(i => new ClientItem { ProductName = products.Find(p=>p.Id == i.ProductId).Name, Quantity = i.Quantity }).ToList();
+        List<ClientItem> clientItems = user.CartItems.Select(i => new ClientItem { ProductName = products.Find(p => p.Id == i.ProductId).Name, Quantity = i.Quantity }).ToList();
         // Här lägger vi våra ClientItems i sessionStorage så vi kan hämta ut dem därifrån inne i Client
         await sessionStorage.SetItemAsync(user.Id, clientItems);
         await sessionStorage.SetItemAsync("DeliveryInfo", deliveryInfo);

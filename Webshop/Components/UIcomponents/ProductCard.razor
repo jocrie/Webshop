@@ -4,19 +4,27 @@
 @attribute [Authorize]
 
 <div class="col px-5 text-center pb-5">
-    
-<div class="card h-100" style="width: 300px">
+
+    <div class="card h-100 @(@Product.QuantityAvailable == 0 ? "opacity-50" : "")" style="width: 300px">
+        <span class="text-center bg-danger">@((Product.Sale == true & Product.QuantityAvailable > 0) ? "SALE" : "")</span>
         <img src=@Product.ImagePath class="card-img-top" alt="Picture of @Product.Id">
         <div class="card-body">
             <h5 class="card-title">@Product.Name</h5>
             <p class="card-text">@Product.ShortDescription</p>
-            <p class="card-text"> @Math.Round(@Product.Price*@ConversionRates.FirstOrDefault(r=>r.Key == $"{Product.Currency}_{SelectedCurrency}").Value) @SelectedCurrency </p>
+            <p class="card-text"> @Math.Round(@Product.Price * @ConversionRates.FirstOrDefault(r => r.Key == $"{Product.Currency}_{SelectedCurrency}").Value) @SelectedCurrency </p>
             <a href="products/@Product.Id" class="btn btn-primary">Details</a>
             <AuthorizeView>
-            <button class="btn btn-success" @onclick="() => OnBuy.InvokeAsync()">Buy</button>
+                @if (Product.QuantityAvailable == 0)
+                {
+                    <button class="btn btn-secondary" disabled=true>Sold out</button>
+                }
+                else
+                {
+                    <button class="btn btn-success" @onclick="() => OnBuy.InvokeAsync()">Buy</button>
+                }
             </AuthorizeView>
         </div>
-</div>
+    </div>
 </div>
 
 
@@ -26,7 +34,6 @@
     [Parameter] public Dictionary<string, double> ConversionRates { get; set; }
     [Parameter] public string SelectedCurrency { get; set; }
 
-    [Parameter]
-    public EventCallback OnBuy { get; set; }
+    [Parameter] public EventCallback OnBuy { get; set; }
 
 }
