@@ -11,17 +11,16 @@ public class WebshopService
     {
         _context = context;
     }
-    
+
     public async Task<ApplicationUser> GetUserCart(ApplicationUser user)
     {
         return _context.Users
             .Include(u => u.CartItems)
             .First(u => u.Id == user.Id);
     }
-    
+
     public async Task<List<Product>> GetAllProducts()
     {
-        // await Task.Delay(500);
         var productsTask = _context.Products.ToListAsync();
         var products = await productsTask;
         return products;
@@ -36,7 +35,7 @@ public class WebshopService
     public async Task<bool> ProcessOrder(ICollection<CartItem> items)
     {
         bool allProcessed = true;
-        
+
         var products = await GetAllProducts();
         foreach (var item in items)
         {
@@ -52,6 +51,7 @@ public class WebshopService
                 {
                     items.Remove(item);
                 }
+
                 allProcessed = false;
             }
             else
@@ -65,6 +65,7 @@ public class WebshopService
         {
             await _context.SaveChangesAsync();
         }
+
         return allProcessed;
     }
 }

@@ -25,13 +25,8 @@
         <span class="position-absolute top-20 start-80 translate-middle badge rounded-pill bg-warning">@noCartItems</span>
     </NavLink>
 </div>
- 
- @code 
- {
-     [Parameter] public int noCartItems { get; set; }
-     
-     public void UpdateHeader()
-     {
-         StateHasChanged();
-     }
- }
+
+@code
+{
+    [Parameter] public int noCartItems { get; set; }
+}

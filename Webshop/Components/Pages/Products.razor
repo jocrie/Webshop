@@ -10,14 +10,14 @@
 @inject AuthenticationStateProvider StateProvider
 @inject WebshopService ws
 @inject UserManager<ApplicationUser> UserManager
-
+@inject Blazored.SessionStorage.ISessionStorageService sessionStorage
 
 @rendermode InteractiveServer
 
-<Header @ref="headerRef" noCartItems="user.CartItems.Sum(i => i.Quantity)"/>
+<Header noCartItems="@(user is not null ? user.CartItems.Sum(i => i.Quantity) : 0)"/>
 
 <div style="display: flex; justify-content: flex-end">
-    <select class="px-1 py-1 text-center" @onchange="UpdateCurrency">
+    <select class="px-1 py-1 text-center" @bind:after="UpdateCurrency" @bind="selectedCurrency">
         @foreach (Currencies currency in Enum.GetValues(typeof(Currencies)))
         {
             <option value="@currency">@currency.ToString()</option>
@@ -31,10 +31,9 @@
 }
 else
 {
+    @* All products *@
     @if (Id is null)
     {
-        @* All products *@
-
         <div class="row row-cols-1 row-cols-lg-2 mb-5">
             @foreach (var product in products)
             {
@@ -42,9 +41,9 @@ else
             }
         </div>
     }
+    @* Single product *@
     else
     {
-        @* Single product *@
         var single = products.Find(p => p.Id == Id);
         if (single is null)
         {
@@ -57,70 +56,55 @@ else
     }
 }
 
-
 @code
 {
-    private List<Product> products;
+    private List<Product> products = new List<Product>();
 
-    public string selectedCurrency;
-    public Dictionary<string, double> conversions = new Dictionary<string, double>();
+    private string? selectedCurrency = Currencies.EUR.ToString(); // Standard currency
+    private Dictionary<string, double> conversions = new Dictionary<string, double>();
+
+    private ApplicationUser? user;
+    private AuthenticationState? authenticationState;
 
     [Parameter] public int? Id { get; set; }
-    ApplicationUser user = new ApplicationUser();
-    AuthenticationState? authenticationState;
-
-    private Header headerRef;
-
-    private async Task AddToCart(Product product)
-    {
-        if (user is not null)
-        {
-            var item = user.CartItems.FirstOrDefault(i => i.ProductId == product.Id);
-            if (item is null)
-            {
-                user.CartItems.Add(new CartItem { ProductId = product.Id, Quantity = 1, });
-            }
-            else
-            {
-                item.Quantity++;
-            }
-
-            await ws.UpdateUser(user);
-        }
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Get products
+            var currencySessionStorage = await sessionStorage.GetItemAsync<string>("currency");
+
+            if (currencySessionStorage is null)
+            {
+                await sessionStorage.SetItemAsync("currency", selectedCurrency);
+            }
+            else
+            {
+                selectedCurrency = currencySessionStorage;
+            }
+
             var result = await ws.GetAllProducts();
             products = result;
 
-            // Get userdata
+            // Get shopping cart
             authenticationState = await StateProvider.GetAuthenticationStateAsync();
 
-            if (authenticationState.User.Identity.IsAuthenticated is true)
+            if (authenticationState.User.Identity?.IsAuthenticated is true)
             {
                 var stateUser = await UserManager.GetUserAsync(authenticationState.User);
                 user = await ws.GetUserCart(stateUser);
             }
 
-            await UpdateCurrency(null);
+            await UpdateCurrency();
 
             StateHasChanged();
         }
     }
 
-    private async Task UpdateCurrency(ChangeEventArgs? args)
+    private async Task UpdateCurrency()
     {
         conversions = new Dictionary<string, double>();
-        if (args?.Value == null)
-            selectedCurrency = Enum.GetName(typeof(Currencies), 0);
-        else
-            selectedCurrency = args.Value.ToString();
 
-        // Create List of all conversion rates
         foreach (var product in products)
         {
             var pair = $"{product.Currency}_{selectedCurrency}";
@@ -130,7 +114,7 @@ else
         //Get all rates from API
         foreach (var pair in conversions.Keys)
         {
-            ConversionRates rate = new ConversionRates();
+            ConversionRates? rate = new ConversionRates();
 
             string url = $"https://api.api-ninjas.com/v1/exchangerate?pair={pair}";
             var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -142,19 +126,36 @@ else
             if (response.IsSuccessStatusCode)
             {
                 using var responseStream = await response.Content.ReadAsStreamAsync();
-                rate = await JsonSerializer.DeserializeAsync
-                    <ConversionRates>(responseStream);
+                rate = await JsonSerializer.DeserializeAsync<ConversionRates>(responseStream);
             }
 
-            conversions[pair] = rate.Rate;
-            // product.Currency = (Currencies)Enum.Parse(typeof(Currencies), SelectedCurrency);
-            // product.Price = product.Price * rate.Rate;
+            if (rate is not null)
+            {
+                conversions[pair] = rate.Rate;
+            }
+
+            await sessionStorage.SetItemAsync("currency", selectedCurrency);
         }
     }
 
-    public class ConversionRates
+    private class ConversionRates
     {
         [JsonPropertyName("exchange_rate")] public double Rate { get; set; }
         [JsonPropertyName("currency_pair")] public string CurrencyPair { get; set; }
+    }
+    
+    private async Task AddToCart(Product product)
+    {
+        var item = user.CartItems.FirstOrDefault(i => i.ProductId == product.Id);
+        if (item is null)
+        {
+            user.CartItems.Add(new CartItem { ProductId = product.Id, Quantity = 1, });
+        }
+        else
+        {
+            item.Quantity++;
+        }
+
+        await ws.UpdateUser(user);
     }
 }

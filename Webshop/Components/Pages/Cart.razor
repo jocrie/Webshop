@@ -124,10 +124,9 @@ else
     {
         Console.WriteLine("HandleSubmit pressed");
 
-        // Processed only if all items are available in full quantity
+        // Processed only if all items are available in full quantity otherwise cart updated
         allProcessed = await ws.ProcessOrder(user.CartItems);
-
-        // Handle case when not all items available in full quantity
+        
         if (allProcessed == true)
         {
             // Render confirmation page

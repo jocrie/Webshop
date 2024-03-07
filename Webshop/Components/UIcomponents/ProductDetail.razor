@@ -13,9 +13,16 @@
             <p>In stock: @Product.QuantityAvailable</p>
         </div>
         <div class="input-group mt-4">
-            <div class="input-group-text px-5">@Math.Round(@Product.Price*@ConversionRates.FirstOrDefault(r=>r.Key == $"{Product.Currency}_{SelectedCurrency}").Value) @SelectedCurrency </div>
+            <div class="input-group-text px-5">@Math.Round(@Product.Price * @ConversionRates.FirstOrDefault(r => r.Key == $"{Product.Currency}_{SelectedCurrency}").Value) @SelectedCurrency </div>
             <AuthorizeView>
-            <button class="btn btn-success px-5" @onclick="() => OnBuy.InvokeAsync()">Buy</button>
+                @if (Product.QuantityAvailable == 0)
+                {
+                    <button class="btn btn-secondary" disabled=true>Sold out</button>
+                }
+                else
+                {
+                    <button class="btn btn-success px-5" @onclick="() => OnBuy.InvokeAsync()">Buy</button>
+                }
             </AuthorizeView>
         </div>
     </div>
@@ -29,5 +36,4 @@
     [Parameter] public string SelectedCurrency { get; set; }
 
     [Parameter] public EventCallback OnBuy { get; set; }
-
 }
